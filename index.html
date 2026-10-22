@@ -12,7 +12,11 @@
     .status { font-size: 13px; color: #8b949e; }
     .container { display: flex; gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
     .video-wrap { position: relative; flex: 1; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16/10; max-height: 70vh; }
-    video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
+    video, canvas { 
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; 
+      /* 取消前置摄像头默认镜像 */
+      transform: scaleX(-1);
+    }
     canvas { pointer-events: none; }
     .panel { width: 380px; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
     .panel h2 { margin: 0 0 8px; font-size: 15px; color: #c9d1d9; }
