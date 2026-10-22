@@ -95,7 +95,7 @@
     }
     button:disabled { background: #30363d; cursor: not-allowed; }
     button:hover:not(:disabled) { background: #2ea043; }
-    .warning { color: #f85149; font-size: 12px; }
+    .warning { color: #f85149; font-size: 12px; white-space: pre-wrap; }
     @media (max-width: 900px) {
       .container { flex-direction: column; }
       .panel { width: 100%; }
@@ -127,12 +127,12 @@
 
       <div class="meta" id="meta">
         帧率: -- fps<br>
-        人脸置信度: --<br>
+        人脸: --<br>
         基线状态: 未校准
       </div>
 
       <div>
-        <button id="startBtn">启动摄像头</button>
+        <button id="startBtn" disabled>启动摄像头</button>
         <button id="calibrateBtn" disabled style="margin-left:8px; background:#1f6feb;">校准基线</button>
       </div>
       <div class="warning" id="warning"></div>
@@ -160,11 +160,9 @@
     let lastFpsTime = performance.now();
     let fps = 0;
 
-    // EMA 平滑
     const smoothed = {};
     const ALPHA = 0.35;
 
-    // 简单 AU 映射（基于常见 blendshape → AU 近似）
     const AU_MAP = [
       { au: 'AU1', name: 'Inner Brow Raiser', keys: ['browInnerUp'] },
       { au: 'AU2', name: 'Outer Brow Raiser', keys: ['browOuterUpLeft', 'browOuterUpRight'] },
@@ -187,20 +185,29 @@
 
     async function initMediaPipe() {
       statusEl.textContent = '加载模型中...';
-      const filesetResolver = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.17/wasm'
-      );
-      faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-        baseOptions: {
-          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
-          delegate: 'GPU'
-        },
-        runningMode: 'VIDEO',
-        numFaces: 1,
-        outputFaceBlendshapes: true,
-        outputFacialTransformationMatrixes: true
-      });
-      statusEl.textContent = '模型加载完成，点击启动摄像头';
+      warningEl.textContent = '正在从 CDN 拉取 WASM 和模型，请稍等...';
+      try {
+        const filesetResolver = await FilesetResolver.forVisionTasks(
+          'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.17/wasm'
+        );
+        faceLandmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+          baseOptions: {
+            modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+            delegate: 'GPU'
+          },
+          runningMode: 'VIDEO',
+          numFaces: 1,
+          outputFaceBlendshapes: true,
+          outputFacialTransformationMatrixes: true
+        });
+        statusEl.textContent = '模型加载完成，点击启动摄像头';
+        warningEl.textContent = '';
+        startBtn.disabled = false;
+      } catch (e) {
+        statusEl.textContent = '模型加载失败';
+        warningEl.textContent = '加载失败：' + e.message + '\n请检查网络或刷新重试。';
+        console.error(e);
+      }
     }
 
     async function startCamera() {
@@ -216,6 +223,7 @@
         startBtn.disabled = true;
         calibrateBtn.disabled = false;
         statusEl.textContent = '检测中';
+        warningEl.textContent = '';
         requestAnimationFrame(loop);
       } catch (e) {
         warningEl.textContent = '摄像头权限被拒绝或设备不可用：' + e.message;
@@ -239,7 +247,6 @@
           val += blendMap[k] || 0;
         }
         val /= item.keys.length;
-        // EMA
         if (smoothed[item.au] === undefined) smoothed[item.au] = val;
         else smoothed[item.au] = ALPHA * val + (1 - ALPHA) * smoothed[item.au];
         aus[item.au] = smoothed[item.au];
@@ -263,11 +270,9 @@
     function drawLandmarks(landmarks) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (!landmarks || !landmarks[0]) return;
-      ctx.strokeStyle = 'rgba(88, 166, 255, 0.6)';
-      ctx.lineWidth = 1;
+      ctx.fillStyle = '#58a6ff';
       const pts = landmarks[0];
       const keyIndices = [33, 133, 362, 263, 61, 291, 0, 17];
-      ctx.fillStyle = '#58a6ff';
       for (const i of keyIndices) {
         if (pts[i]) {
           const x = pts[i].x * canvas.width;
@@ -295,7 +300,7 @@
     }
 
     function loop() {
-      if (!running) return;
+      if (!running || !faceLandmarker) return;
       const now = performance.now();
       if (video.currentTime !== lastVideoTime) {
         lastVideoTime = video.currentTime;
@@ -328,14 +333,10 @@
     startBtn.onclick = startCamera;
     calibrateBtn.onclick = () => {
       Object.keys(smoothed).forEach(k => delete smoothed[k]);
-      statusEl.textContent = '基线已重置（当前帧作为新起点）';
+      statusEl.textContent = '基线已重置';
     };
 
-    initMediaPipe().catch(e => {
-      statusEl.textContent = '模型加载失败';
-      warningEl.textContent = e.message;
-      console.error(e);
-    });
+    initMediaPipe();
   </script>
 </body>
 </html>
