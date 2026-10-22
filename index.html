@@ -2,55 +2,142 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MediaPipe 微表情 + 肢体 POC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>微表情 + 肢体</title>
   <style>
+    :root {
+      --bg: #0b0e14;
+      --card: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --green: #3fb950;
+      --red: #f85149;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: system-ui, sans-serif; background: #0f1115; color: #e5e7eb; min-height: 100vh; }
-    header { padding: 16px 20px; background: #161b22; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
-    h1 { margin: 0; font-size: 18px; }
-    .status { font-size: 13px; color: #8b949e; }
-    .container { display: flex; gap: 20px; padding: 20px; max-width: 1400px; margin: 0 auto; }
-    .video-wrap { position: relative; flex: 1; background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16/10; max-height: 70vh; }
-    video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    header {
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      background: rgba(11,14,20,0.9);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.2px; }
+    .status { font-size: 13px; color: var(--muted); }
+    .main { padding: 12px; max-width: 480px; margin: 0 auto; }
+    .video-box {
+      position: relative;
+      background: #000;
+      border-radius: 16px;
+      overflow: hidden;
+      aspect-ratio: 4/3;
+      margin-bottom: 12px;
+    }
+    video, canvas {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
     canvas { pointer-events: none; }
-    .panel { width: 380px; background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-    .panel h2 { margin: 0 0 8px; font-size: 15px; color: #c9d1d9; }
-    .au-list { display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto; }
-    .au-item { display: flex; justify-content: space-between; align-items: center; font-size: 13px; background: #0d1117; padding: 6px 10px; border-radius: 6px; }
-    .bar-wrap { flex: 1; height: 6px; background: #21262d; border-radius: 3px; margin: 0 10px; overflow: hidden; }
-    .bar { height: 100%; background: #58a6ff; border-radius: 3px; }
-    .emotion { font-size: 24px; font-weight: 700; text-align: center; padding: 12px; background: linear-gradient(135deg, #1f6feb33, #8957e533); border-radius: 8px; min-height: 56px; display: flex; align-items: center; justify-content: center; }
-    .pose-info { font-size: 13px; background: #0d1117; padding: 10px; border-radius: 6px; line-height: 1.6; white-space: pre-wrap; }
-    .meta { font-size: 12px; color: #8b949e; line-height: 1.5; }
-    button { background: #238636; color: white; border: none; padding: 10px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; }
-    button:disabled { background: #30363d; cursor: not-allowed; }
-    .warning { color: #f85149; font-size: 12px; white-space: pre-wrap; }
-    @media (max-width: 900px) { .container { flex-direction: column; } .panel { width: 100%; } }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .card h2 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .emotion {
+      font-size: 28px;
+      font-weight: 700;
+      text-align: center;
+      padding: 18px 12px;
+      background: linear-gradient(135deg, #1f6feb22, #8957e522);
+      border-radius: 10px;
+    }
+    .pose { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
+    .au-row {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; margin: 6px 0;
+    }
+    .au-name { width: 42px; color: var(--muted); }
+    .bar-bg { flex: 1; height: 5px; background: #21262d; border-radius: 3px; overflow: hidden; }
+    .bar { height: 100%; background: var(--accent); border-radius: 3px; transition: width .12s; }
+    .au-val { width: 36px; text-align: right; color: var(--muted); }
+    .meta { font-size: 12px; color: var(--muted); line-height: 1.5; }
+    .btn-row { display: flex; gap: 8px; margin-top: 8px; }
+    button {
+      flex: 1;
+      background: var(--green);
+      color: #fff;
+      border: none;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.secondary { background: #1f6feb; }
+    button:disabled { background: #30363d; color: #6e7681; cursor: not-allowed; }
+    .warn { color: var(--red); font-size: 12px; margin-top: 8px; white-space: pre-wrap; }
+    .loading-overlay {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: #fff;
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>MediaPipe 微表情 + 肢体 POC</h1>
-    <div class="status" id="status">准备中...</div>
+    <h1>微表情 + 肢体</h1>
+    <div class="status" id="status">准备中</div>
   </header>
-  <div class="container">
-    <div class="video-wrap">
+  <div class="main">
+    <div class="video-box">
       <video id="video" autoplay playsinline muted></video>
       <canvas id="canvas"></canvas>
+      <div class="loading-overlay" id="overlay">模型加载中…</div>
     </div>
-    <div class="panel">
-      <div><h2>当前主导情绪</h2><div class="emotion" id="emotion">等待检测</div></div>
-      <div><h2>肢体姿态</h2><div class="pose-info" id="poseInfo">等待检测</div></div>
-      <div><h2>关键 AU（平滑后）</h2><div class="au-list" id="auList"></div></div>
-      <div class="meta" id="meta">帧率: -- fps<br>人脸: -- | 姿态: --</div>
-      <div>
-        <button id="startBtn" disabled>启动摄像头</button>
-        <button id="calibrateBtn" disabled style="margin-left:8px; background:#1f6feb;">校准基线</button>
-      </div>
-      <div class="warning" id="warning"></div>
+
+    <div class="card">
+      <h2>情绪</h2>
+      <div class="emotion" id="emotion">—</div>
     </div>
+
+    <div class="card">
+      <h2>姿态</h2>
+      <div class="pose" id="poseInfo">等待检测</div>
+    </div>
+
+    <div class="card">
+      <h2>关键 AU</h2>
+      <div id="auList"></div>
+    </div>
+
+    <div class="meta" id="meta">帧率 — · 人脸 — · 姿态 —</div>
+    <div class="btn-row">
+      <button id="startBtn" disabled>启动摄像头</button>
+      <button id="calibrateBtn" class="secondary" disabled>校准</button>
+    </div>
+    <div class="warn" id="warning"></div>
   </div>
+
   <script type="module">
     import { FaceLandmarker, PoseLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.17/vision_bundle.mjs';
 
@@ -65,91 +152,77 @@
     const startBtn = document.getElementById('startBtn');
     const calibrateBtn = document.getElementById('calibrateBtn');
     const warningEl = document.getElementById('warning');
+    const overlay = document.getElementById('overlay');
 
-    let faceLandmarker = null;
-    let poseLandmarker = null;
-    let running = false;
-    let lastVideoTime = -1;
-    let frameCount = 0;
-    let lastFpsTime = performance.now();
-    let fps = 0;
-    const smoothed = {};
-    const ALPHA = 0.35;
+    let faceLandmarker = null, poseLandmarker = null;
+    let running = false, lastVideoTime = -1;
+    let frameCount = 0, lastFpsTime = performance.now(), fps = 0;
+    const smoothed = {}, ALPHA = 0.35;
 
     const AU_MAP = [
       { au: 'AU1', keys: ['browInnerUp'] },
-      { au: 'AU2', keys: ['browOuterUpLeft', 'browOuterUpRight'] },
-      { au: 'AU4', keys: ['browDownLeft', 'browDownRight'] },
-      { au: 'AU5', keys: ['eyeWideLeft', 'eyeWideRight'] },
-      { au: 'AU6', keys: ['cheekSquintLeft', 'cheekSquintRight'] },
-      { au: 'AU12', keys: ['mouthSmileLeft', 'mouthSmileRight'] },
-      { au: 'AU15', keys: ['mouthFrownLeft', 'mouthFrownRight'] },
+      { au: 'AU2', keys: ['browOuterUpLeft','browOuterUpRight'] },
+      { au: 'AU4', keys: ['browDownLeft','browDownRight'] },
+      { au: 'AU5', keys: ['eyeWideLeft','eyeWideRight'] },
+      { au: 'AU6', keys: ['cheekSquintLeft','cheekSquintRight'] },
+      { au: 'AU12', keys: ['mouthSmileLeft','mouthSmileRight'] },
+      { au: 'AU15', keys: ['mouthFrownLeft','mouthFrownRight'] },
       { au: 'AU26', keys: ['jawOpen'] },
-      { au: 'AU45', keys: ['eyeBlinkLeft', 'eyeBlinkRight'] },
+      { au: 'AU45', keys: ['eyeBlinkLeft','eyeBlinkRight'] },
     ];
     const EMOTION_RULES = [
-      { name: '😊 高兴', score: a => (a.AU6||0)*0.6 + (a.AU12||0)*1.0 },
-      { name: '😮 惊讶', score: a => (a.AU1||0)*0.5 + (a.AU2||0)*0.5 + (a.AU5||0)*0.8 + (a.AU26||0)*0.7 },
-      { name: '😠 愤怒', score: a => (a.AU4||0)*1.0 + (a.AU5||0)*0.3 },
-      { name: '😢 悲伤', score: a => (a.AU1||0)*0.4 + (a.AU4||0)*0.5 + (a.AU15||0)*0.8 },
+      { name: '😊 高兴', score: a => (a.AU6||0)*0.6+(a.AU12||0)*1.0 },
+      { name: '😮 惊讶', score: a => (a.AU1||0)*0.5+(a.AU2||0)*0.5+(a.AU5||0)*0.8+(a.AU26||0)*0.7 },
+      { name: '😠 愤怒', score: a => (a.AU4||0)*1.0+(a.AU5||0)*0.3 },
+      { name: '😢 悲伤', score: a => (a.AU1||0)*0.4+(a.AU4||0)*0.5+(a.AU15||0)*0.8 },
       { name: '😐 中性', score: () => 0.15 },
     ];
-    const POSE = { L_SHOULDER: 11, R_SHOULDER: 12, L_WRIST: 15, R_WRIST: 16, L_HIP: 23, R_HIP: 24 };
+    const POSE = { L_SHOULDER:11, R_SHOULDER:12, L_WRIST:15, R_WRIST:16, L_HIP:23, R_HIP:24 };
 
-    async function initMediaPipe() {
-      statusEl.textContent = '加载模型中（并行）...';
-      warningEl.textContent = 'Face 与 Pose 同时下载，请稍等...';
+    async function init() {
+      statusEl.textContent = '加载中';
+      overlay.textContent = '加载 Face 模型…';
       try {
         const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.17/wasm');
 
-        const facePromise = FaceLandmarker.createFromOptions(vision, {
+        faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
             delegate: 'GPU'
           },
-          runningMode: 'VIDEO',
-          numFaces: 1,
-          outputFaceBlendshapes: true
+          runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: true
         });
+        overlay.textContent = 'Face 完成，加载 Pose…';
+        statusEl.textContent = '人脸就绪';
+        startBtn.disabled = false;
+        overlay.style.display = 'none';
 
-        const posePromise = PoseLandmarker.createFromOptions(vision, {
+        PoseLandmarker.createFromOptions(vision, {
           baseOptions: {
             modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task',
             delegate: 'GPU'
           },
-          runningMode: 'VIDEO',
-          numPoses: 1
+          runningMode: 'VIDEO', numPoses: 1
+        }).then(p => {
+          poseLandmarker = p;
+          statusEl.textContent = '全部就绪';
+        }).catch(e => {
+          warningEl.textContent = 'Pose 加载失败，仅人脸可用';
+          console.error(e);
         });
-
-        const results = await Promise.allSettled([facePromise, posePromise]);
-
-        if (results[0].status === 'fulfilled') {
-          faceLandmarker = results[0].value;
-        } else {
-          throw new Error('Face 模型失败: ' + results[0].reason?.message);
-        }
-
-        if (results[1].status === 'fulfilled') {
-          poseLandmarker = results[1].value;
-          statusEl.textContent = 'Face + Pose 加载完成';
-          warningEl.textContent = '';
-        } else {
-          statusEl.textContent = '仅人脸可用（Pose 失败）';
-          warningEl.textContent = 'Pose 加载失败：' + results[1].reason?.message;
-          console.error(results[1].reason);
-        }
-
-        startBtn.disabled = false;
       } catch (e) {
-        statusEl.textContent = '模型加载失败';
-        warningEl.textContent = '加载失败：' + e.message;
+        statusEl.textContent = '加载失败';
+        overlay.textContent = '加载失败';
+        warningEl.textContent = e.message;
         console.error(e);
       }
     }
 
     async function startCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
+        });
         video.srcObject = stream;
         await video.play();
         canvas.width = video.videoWidth;
@@ -164,93 +237,87 @@
       }
     }
 
-    function getBlendshapeMap(result) {
-      const map = {};
-      if (!result?.faceBlendshapes?.[0]) return map;
-      for (const b of result.faceBlendshapes[0].categories) map[b.categoryName] = b.score;
-      return map;
+    function getBlendshapeMap(r) {
+      const m = {};
+      if (!r?.faceBlendshapes?.[0]) return m;
+      for (const b of r.faceBlendshapes[0].categories) m[b.categoryName] = b.score;
+      return m;
     }
-    function computeAUs(blendMap) {
+    function computeAUs(bm) {
       const aus = {};
-      for (const item of AU_MAP) {
-        let val = 0;
-        for (const k of item.keys) val += blendMap[k] || 0;
-        val /= item.keys.length;
-        smoothed[item.au] = smoothed[item.au] === undefined ? val : ALPHA * val + (1 - ALPHA) * smoothed[item.au];
-        aus[item.au] = smoothed[item.au];
+      for (const it of AU_MAP) {
+        let v = 0;
+        for (const k of it.keys) v += bm[k] || 0;
+        v /= it.keys.length;
+        smoothed[it.au] = smoothed[it.au] === undefined ? v : ALPHA*v + (1-ALPHA)*smoothed[it.au];
+        aus[it.au] = smoothed[it.au];
       }
       return aus;
     }
-    function getDominantEmotion(aus) {
-      let best = EMOTION_RULES[0], bestScore = -1;
+    function getEmotion(aus) {
+      let best = EMOTION_RULES[0], bs = -1;
       for (const r of EMOTION_RULES) {
         const s = r.score(aus);
-        if (s > bestScore) { bestScore = s; best = r; }
+        if (s > bs) { bs = s; best = r; }
       }
-      return bestScore > 0.25 ? best.name : '😐 中性';
+      return bs > 0.25 ? best.name : '😐 中性';
     }
-
-    function analyzePose(landmarks) {
-      if (!landmarks?.length) return '未检测到姿态';
-      const p = landmarks[0];
+    function analyzePose(lm) {
+      if (!lm?.length) return '未检测到姿态';
+      const p = lm[0];
       const ls = p[POSE.L_SHOULDER], rs = p[POSE.R_SHOULDER];
       if (!ls || !rs) return '上半身不完整';
       const sw = Math.abs(ls.x - rs.x);
       const lw = p[POSE.L_WRIST], rw = p[POSE.R_WRIST];
-      const spread = ((lw ? Math.abs(lw.x - ls.x) : 0) + (rw ? Math.abs(rw.x - rs.x) : 0)) / 2;
-      let open = spread > sw * 0.6 ? '开放' : (spread < sw * 0.3 ? '封闭' : '中性');
+      const spread = ((lw?Math.abs(lw.x-ls.x):0) + (rw?Math.abs(rw.x-rs.x):0)) / 2;
+      const open = spread > sw*0.6 ? '开放' : (spread < sw*0.3 ? '封闭' : '中性');
       let lean = '直立';
       const lh = p[POSE.L_HIP], rh = p[POSE.R_HIP];
       if (lh && rh) {
-        const sy = (ls.y + rs.y) / 2, hy = (lh.y + rh.y) / 2;
-        if (sy < hy - 0.05) lean = '前倾';
-        else if (sy > hy + 0.02) lean = '后仰';
+        const sy = (ls.y+rs.y)/2, hy = (lh.y+rh.y)/2;
+        if (sy < hy-0.05) lean = '前倾';
+        else if (sy > hy+0.02) lean = '后仰';
       }
-      return `姿态：${open}\n身体：${lean}\n肩宽比：${sw.toFixed(2)}\n点数：${p.length}`;
+      return `姿态 ${open}\n身体 ${lean}\n肩宽比 ${sw.toFixed(2)}`;
     }
-
-    function drawPose(landmarks) {
-      if (!landmarks?.length) return;
-      const pts = landmarks[0];
-      ctx.strokeStyle = '#3fb950';
-      ctx.lineWidth = 2;
-      ctx.fillStyle = '#3fb950';
-      const conns = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24]];
-      for (const [a,b] of conns) {
+    function drawPose(lm) {
+      if (!lm?.length) return;
+      const pts = lm[0];
+      ctx.strokeStyle = '#3fb950'; ctx.lineWidth = 2; ctx.fillStyle = '#3fb950';
+      for (const [a,b] of [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24]]) {
         if (pts[a] && pts[b]) {
           ctx.beginPath();
-          ctx.moveTo(pts[a].x * canvas.width, pts[a].y * canvas.height);
-          ctx.lineTo(pts[b].x * canvas.width, pts[b].y * canvas.height);
+          ctx.moveTo(pts[a].x*canvas.width, pts[a].y*canvas.height);
+          ctx.lineTo(pts[b].x*canvas.width, pts[b].y*canvas.height);
           ctx.stroke();
         }
       }
       for (const i of [11,12,13,14,15,16,23,24]) {
         if (pts[i]) {
           ctx.beginPath();
-          ctx.arc(pts[i].x * canvas.width, pts[i].y * canvas.height, 5, 0, Math.PI*2);
+          ctx.arc(pts[i].x*canvas.width, pts[i].y*canvas.height, 4, 0, Math.PI*2);
           ctx.fill();
         }
       }
     }
-    function drawFace(landmarks) {
-      if (!landmarks?.[0]) return;
+    function drawFace(lm) {
+      if (!lm?.[0]) return;
       ctx.fillStyle = '#58a6ff';
-      const pts = landmarks[0];
       for (const i of [33,133,362,263,61,291,0,17]) {
-        if (pts[i]) {
+        if (lm[0][i]) {
           ctx.beginPath();
-          ctx.arc(pts[i].x * canvas.width, pts[i].y * canvas.height, 3, 0, Math.PI*2);
+          ctx.arc(lm[0][i].x*canvas.width, lm[0][i].y*canvas.height, 3, 0, Math.PI*2);
           ctx.fill();
         }
       }
     }
-    function renderAUList(aus) {
+    function renderAUs(aus) {
       auListEl.innerHTML = '';
-      for (const item of AU_MAP) {
-        const v = aus[item.au] || 0;
+      for (const it of AU_MAP) {
+        const v = aus[it.au] || 0;
         const d = document.createElement('div');
-        d.className = 'au-item';
-        d.innerHTML = `<span>${item.au}</span><div class="bar-wrap"><div class="bar" style="width:${Math.min(100,v*200)}%"></div></div><span>${(v*100).toFixed(0)}%</span>`;
+        d.className = 'au-row';
+        d.innerHTML = `<span class="au-name">${it.au}</span><div class="bar-bg"><div class="bar" style="width:${Math.min(100,v*200)}%"></div></div><span class="au-val">${(v*100).toFixed(0)}%</span>`;
         auListEl.appendChild(d);
       }
     }
@@ -262,47 +329,40 @@
         lastVideoTime = video.currentTime;
         frameCount++;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        let faceCount = 0, poseCount = 0;
+        let fc = 0, pc = 0;
 
         if (faceLandmarker) {
           const fr = faceLandmarker.detectForVideo(video, now);
           if (fr.faceLandmarks?.length) {
-            faceCount = fr.faceLandmarks.length;
+            fc = fr.faceLandmarks.length;
             const aus = computeAUs(getBlendshapeMap(fr));
-            emotionEl.textContent = getDominantEmotion(aus);
-            renderAUList(aus);
+            emotionEl.textContent = getEmotion(aus);
+            renderAUs(aus);
             drawFace(fr.faceLandmarks);
           } else emotionEl.textContent = '未检测到人脸';
         }
-
         if (poseLandmarker) {
           const pr = poseLandmarker.detectForVideo(video, now);
           const lm = pr.landmarks || pr.poseLandmarks || [];
           if (lm.length) {
-            poseCount = lm.length;
+            pc = lm.length;
             poseInfoEl.textContent = analyzePose(lm);
             drawPose(lm);
-          } else {
-            poseInfoEl.textContent = '未检测到姿态（模型已加载）';
-          }
-        } else {
-          poseInfoEl.textContent = 'Pose 模型未加载';
-        }
+          } else poseInfoEl.textContent = '未检测到姿态';
+        } else poseInfoEl.textContent = 'Pose 加载中…';
 
         if (now - lastFpsTime > 1000) {
           fps = Math.round(frameCount * 1000 / (now - lastFpsTime));
-          frameCount = 0;
-          lastFpsTime = now;
+          frameCount = 0; lastFpsTime = now;
         }
-        metaEl.innerHTML = `帧率: ${fps} fps<br>人脸: ${faceCount} | 姿态: ${poseCount}`;
+        metaEl.textContent = `帧率 ${fps} fps · 人脸 ${fc} · 姿态 ${pc}`;
       }
       requestAnimationFrame(loop);
     }
 
     startBtn.onclick = startCamera;
-    calibrateBtn.onclick = () => { Object.keys(smoothed).forEach(k => delete smoothed[k]); statusEl.textContent = '基线已重置'; };
-    initMediaPipe();
+    calibrateBtn.onclick = () => { Object.keys(smoothed).forEach(k => delete smoothed[k]); statusEl.textContent = '已校准'; };
+    init();
   </script>
 </body>
 </html>
